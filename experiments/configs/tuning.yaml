@@ -1,8 +1,4 @@
-# Base config: dataset paths, hardware specs
-
-dataset_root: data/processed
-log_root: logs
-results_root: experiments/results
+# Tuning lambda parameter
 
 # Range for lambda (regularization parameter)
 lambda:

@@ -443,6 +443,8 @@ def tmw_sinkhorn2(
         else:
             raise ValueError("Unknown method '%s'." % method)
 
+
+
 if __name__ == "__main__":
     # Example usage
     np.random.seed(42)
