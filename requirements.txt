@@ -1,0 +1,7 @@
+# Project requirements
+numpy
+scipy
+pandas
+matplotlib
+POT
+python-lemon-binding
