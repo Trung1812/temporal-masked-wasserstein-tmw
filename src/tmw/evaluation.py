@@ -12,6 +12,7 @@ from sklearn.metrics import accuracy_score
 from preprocessing import load_dataset
 from sinkhorn import tmw_sinkhorn2, get_mask
 
+N_JOBS = 1
 # Setup device for GPU acceleration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -111,7 +112,7 @@ def objective(trial):
     scores = cross_val_score(knn, D, y,
                              cv=LeaveOneOut(),
                              scoring='accuracy',
-                             n_jobs=-1)
+                             n_jobs=1)
     acc = scores.mean()
     logging.info(f"Trial {trial.number} accuracy: {acc:.4f}")
     trial.set_user_attr("accuracy", acc)
@@ -124,7 +125,7 @@ def main():
     )
     parser.add_argument(
         "--dataset_dir",
-        default="data/processed/BeetleFly",
+        default="data/processed/SwedishLeaf",
         type=str,
         help="Path to dataset folder containing *_TRAIN.tsv and *_TEST.tsv"
     )
@@ -135,12 +136,21 @@ def main():
         help="Number of Optuna trials"
     )
     parser.add_argument(
+        "--n_jobs",
+        dest="n_jobs",
+        type=int,
+        default=1,
+        help="Number of parallel jobs for Optuna and cross-validation"
+    )
+    parser.add_argument(
         "--log_dir",
         type=str,
         default="logs",
         help="Root directory for logs and outputs"
     )
     args = parser.parse_args()
+    global N_JOBS
+    N_JOBS = args.n_jobs
 
     dataset_name = os.path.basename(os.path.normpath(args.dataset_dir))
     out_dir = os.path.join(args.log_dir, dataset_name)
@@ -172,7 +182,7 @@ def main():
         load_if_exists=True
     )
     logging.info("Starting hyperparameter optimization...")
-    study.optimize(objective, n_trials=args.n_trials)
+    study.optimize(objective, n_trials=args.n_trials, n_jobs=N_JOBS)
 
     best = study.best_trial
     best_w = best.params['w']

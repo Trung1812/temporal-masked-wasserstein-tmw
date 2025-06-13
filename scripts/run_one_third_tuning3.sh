@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+caffeinate -i bash -c '
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,7 +15,6 @@ N_TRIALS=200
 LOG_ROOT="$PROJECT_ROOT/logs"
 
 DATASETS=(
-    "BeetleFly"
     "BME"
     "Coffee"
     "SwedishLeaf"
@@ -42,3 +42,5 @@ for DATASET_NAME in "${DATASETS[@]}"; do
 done
 
 echo "All experiments finished."
+
+'
