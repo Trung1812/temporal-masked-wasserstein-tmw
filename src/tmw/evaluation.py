@@ -6,13 +6,13 @@ import logging
 import torch
 import optuna
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import cross_val_score, LeaveOneOut
+from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.metrics import accuracy_score
 
 from preprocessing import load_dataset
 from sinkhorn import tmw_sinkhorn2, get_mask
 
-N_JOBS = 1
+N_JOBS = 2
 # Setup device for GPU acceleration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -110,9 +110,9 @@ def objective(trial):
     D = compute_tmw_distance_matrix(X, w, lam)
     knn = KNeighborsClassifier(n_neighbors=1, metric='precomputed')
     scores = cross_val_score(knn, D, y,
-                             cv=LeaveOneOut(),
+                             cv=StratifiedKFold(shuffle=True),
                              scoring='accuracy',
-                             n_jobs=1)
+                             n_jobs=N_JOBS)
     acc = scores.mean()
     logging.info(f"Trial {trial.number} accuracy: {acc:.4f}")
     trial.set_user_attr("accuracy", acc)
@@ -139,7 +139,7 @@ def main():
         "--n_jobs",
         dest="n_jobs",
         type=int,
-        default=1,
+        default=2,
         help="Number of parallel jobs for Optuna and cross-validation"
     )
     parser.add_argument(
