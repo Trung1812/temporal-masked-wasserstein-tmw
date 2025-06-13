@@ -112,7 +112,7 @@ def objective(trial):
     scores = cross_val_score(knn, D, y,
                              cv=StratifiedKFold(shuffle=True),
                              scoring='accuracy',
-                             n_jobs=N_JOBS)
+                             n_jobs=1)
     acc = scores.mean()
     logging.info(f"Trial {trial.number} accuracy: {acc:.4f}")
     trial.set_user_attr("accuracy", acc)
@@ -139,7 +139,7 @@ def main():
         "--n_jobs",
         dest="n_jobs",
         type=int,
-        default=2,
+        default=4,
         help="Number of parallel jobs for Optuna and cross-validation"
     )
     parser.add_argument(
