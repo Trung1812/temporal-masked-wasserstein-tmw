@@ -1,11 +1,6 @@
 # POW benchmark
 import numpy as np
 import ot
-import scipy
-from ot.backend import get_backend
-from ot.optim import line_search_armijo
-from ot.utils import list_to_array
-
 
 def pow_regularization(M, reg):
     I = get_I(M)
