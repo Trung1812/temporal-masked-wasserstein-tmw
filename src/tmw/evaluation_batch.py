@@ -8,39 +8,14 @@ import optuna
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.metrics import accuracy_score
-
+import tqdm
 from preprocessing import load_dataset
 from sinkhorn import tmw_sinkhorn_knopp_batch, get_mask
 
 N_JOBS = 1
 # Setup device for GPU acceleration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-
-def setup_logging(log_dir="logs", log_file="optuna_tuning.log"):
-    """
-    Creates log directory and file; logs to both file and console.
-    """
-    os.makedirs(log_dir, exist_ok=True)
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-
-    # File handler
-    fh = logging.FileHandler(os.path.join(log_dir, log_file))
-    fh.setLevel(logging.INFO)
-    fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-    logger.addHandler(fh)
-
-    # Console handler
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(logging.Formatter('%(message)s'))
-    logger.addHandler(ch)
-
-    # Optuna logging
-    optuna.logging.get_logger("optuna").addHandler(ch)
-    optuna.logging.set_verbosity(optuna.logging.INFO)
-
+from utils import setup_logging
 
 def compute_tmw_distance_matrix(X, w, lam):
     """
@@ -60,7 +35,7 @@ def compute_tmw_distance_matrix(X, w, lam):
     D = torch.zeros((n, n), device=device)
 
     # loop over i, batch sinkhorn over all j > i
-    for i in range(n):
+    for i in tqdm.tqdm(range(n), desc="Computing TMW distances"):
         count = n - i - 1
         if count <= 0:
             continue
@@ -101,25 +76,25 @@ def compute_tmw_train_test(X_train, X_test, w, lam):
     mask_tensor = torch.from_numpy(mask).float().to(device)
 
     a = torch.full((T,), 1.0/T, device=device)
-    b = a
+    b = a.clone()
 
     D = torch.zeros((n_te, n_tr), device=device)
 
-    # for each test sample, batch over all train samples
-    for i in range(n_te):
-        # batch of one test vs all train
-        xi_batch = X_te[i].unsqueeze(0).repeat(n_tr, 1).unsqueeze(2)         # (n_tr, T, 1)
-        xj_batch = X_tr.unsqueeze(2)                                         # (n_tr, T, 1)
+    # for each train sample, batch over all test samples
+    for j in tqdm.tqdm(range(n_tr), desc="Computing test-train TMW distances"):
+        # batch of one train vs all test
+        xi_batch = X_tr[j].unsqueeze(0).repeat(n_te, 1).unsqueeze(2)         # (n_te, T, 1)
+        xj_batch = X_te.unsqueeze(2)                                         # (n_te, T, 1)
 
-        M_list = torch.cdist(xi_batch, xj_batch, p=2)                       # (n_tr, T, T)
+        M_list = torch.cdist(xi_batch, xj_batch, p=2)                       # (n_te, T, T)
 
         plans = tmw_sinkhorn_knopp_batch(
             a, b, M_list, mask_tensor, lam,
             numItermax=10000, stopThr=1e-7, log=False, warn=False
-        )                                                                    # (n_tr, T, T)
+        )                                                                    # (n_te, T, T)
 
-        dists = (plans * M_list).sum(dim=(1, 2))                            # (n_tr,)
-        D[i] = dists
+        dists = (plans * M_list).sum(dim=(1, 2))                            # (n_te,)
+        D[:, j] = dists
 
     return D.cpu().numpy()
 

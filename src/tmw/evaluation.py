@@ -15,32 +15,7 @@ from sinkhorn import tmw_sinkhorn2, get_mask
 N_JOBS = 2
 # Setup device for GPU acceleration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-
-def setup_logging(log_dir="logs", log_file="optuna_tuning.log"):
-    """
-    Creates log directory and file; logs to both file and console.
-    """
-    os.makedirs(log_dir, exist_ok=True)
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-
-    # File handler
-    fh = logging.FileHandler(os.path.join(log_dir, log_file))
-    fh.setLevel(logging.INFO)
-    fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-    logger.addHandler(fh)
-
-    # Console handler
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(logging.Formatter('%(message)s'))
-    logger.addHandler(ch)
-
-    # Optuna logging
-    optuna.logging.get_logger("optuna").addHandler(ch)
-    optuna.logging.set_verbosity(optuna.logging.INFO)
-
+from utils import setup_logging
 
 def compute_tmw_distance_matrix(X, w, lam):
     """
