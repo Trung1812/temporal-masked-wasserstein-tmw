@@ -5,7 +5,6 @@ import warnings
 from ot.backend import get_backend
 from ot.utils import list_to_array
 
-u = ot.bregman.sinkhorn_knopp
 
 def get_mask(m, n, w):
     """Get the mask for the locality constraint"""
@@ -328,6 +327,109 @@ def tmw_sinkhorn_log(
         else:
             return nx.exp(get_logT(u, v))
 
+import warnings
+
+def tmw_sinkhorn_knopp_batch(a,
+                             b,
+                             M,
+                             mask,
+                             reg,
+                             numItermax=1000,
+                             stopThr=1e-7,
+                             log=False,
+                             verbose=False,
+                             warn=True,
+                             warmstart=None,
+                             **kwargs
+                            ):
+    """
+    Batch Sinkhorn for a single (a,b) but multiple cost matrices.
+    
+    a           : array-like, shape (dim_a,)
+    b           : array-like, shape (dim_b,)
+    M_list      : array-like, shape (batch, dim_a, dim_b)
+    mask        : array-like, shape (dim_a, dim_b) or (batch, dim_a, dim_b)
+    reg         : float, regularization
+    numItermax, stopThr, log, verbose, warn, warmstart : same meaning as tmw_sinkhorn_knopp
+
+    Returns
+    -------
+    plans      : ndarray, shape (batch, dim_a, dim_b)
+    (and logs if log=True)
+    """
+    # ensure arrays
+    a, b, M, mask = list_to_array(a, b, M, mask)
+    
+    batch, dim_a, dim_b = M.shape
+  
+    nx = get_backend(a, b, M, mask)
+
+    # init u, v for each batch
+    if warmstart is not None:
+        u, v = nx.exp(warmstart[0]), nx.exp(warmstart[1])
+    else:
+        u = nx.ones((batch, dim_a), type_as=M) / dim_a
+        v = nx.ones((batch, dim_b), type_as=M) / dim_b
+
+    # build kernel once per batch
+    K  = mask * nx.exp(M / (-reg))
+    Kp = (1.0 / a).reshape(1, -1, 1) * K       # a shape -> (1, dim_a, 1) K shape = M shape (batch, dim_a, dim_b)
+
+    if log:
+        err_log = []
+
+    # Sinkhorn loop, vectorized
+    for ii in range(numItermax):
+        up, vp = u, v
+
+        # update v: K^T u
+        Kt_u = nx.einsum('bij,bi->bj', K, u)    # shape (batch, dim_b)
+        v    = b.reshape(1, -1) / Kt_u           # broadcast b over batch
+
+        # update u: Kp v
+        u    = 1.0 / nx.einsum('bij,bj->bi', Kp, v)
+
+        # check numeric issues
+        if (nx.any(Kt_u == 0) or nx.any(nx.isnan(u)) or nx.any(nx.isnan(v))
+            or nx.any(nx.isinf(u)) or nx.any(nx.isinf(v))):
+            warnings.warn(f"[batch Sinkhorn] numerical error at iter {ii}")
+            u, v = up, vp
+            break
+
+        # convergence check every 10 iters
+        if ii % 10 == 0:
+            # current b‐marginal: sum_i u*K*v
+            tmp2 = nx.einsum('bi,bij,bj->bj', u, K, v)
+            err  = nx.norm(tmp2 - b.reshape(1, -1), axis=1)  # per batch
+            if log:
+                err_log.append(err)
+            if (err < stopThr).all():
+                break
+            if verbose and ii % 200 == 0:
+                print("It.| Err\n" + "-"*19)
+            if verbose:
+                for bi, e in enumerate(err):
+                    print(f"[batch {bi}] {ii:5d} | {e:.2e}")
+
+    else:
+        if warn:
+            warnings.warn(
+                "[batch Sinkhorn] did not converge; "
+                "consider increasing numItermax or reg."
+            )
+
+    # collect logs
+    if log:
+        log_dict = {'err': nx.stack(err_log, axis=0),
+                    'niter': ii,
+                    'u': u,
+                    'v': v}
+
+    # final transport plans
+    plans = u[:, :, None] * K * v[:, None, :]
+
+    return (plans, log_dict) if log else plans
+
 def tmw_sinkhorn2(
     a,
     b,
@@ -442,8 +544,7 @@ def tmw_sinkhorn2(
             )
         else:
             raise ValueError("Unknown method '%s'." % method)
-
-
+  
 
 if __name__ == "__main__":
     # Example usage
