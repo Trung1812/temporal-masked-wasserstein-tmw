@@ -1,2 +1,5 @@
-experiments/logs/*
-experiments/results/*
+logs/*
+!logs/*.csv
+!logs/*.py
+!logs/*ipynb
+.*
