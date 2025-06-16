@@ -11,9 +11,8 @@ setup(
         'pandas',
         'matplotlib',
         'POT',
-        'python-lemon-binding',
     ],
     description='Temporal Masked Wasserstein (TMW) project',
-    author='',
-    author_email='',
+    author='Trung Pham',
+    author_email='trung.pq214935@gmail.com',
 )

@@ -14,37 +14,28 @@ tmw_project/
 │   ├── tmw/                # Main TMW implementation
 │   │   ├── __init__.py
 │   │   ├── preprocessing.py    # Z-normalization, loading, splitting
-│   │   ├── mask.py             # Build temporal mask matrices for window w
+│   │   ├── mask.py             # Build temporal mask matrices
 │   │   ├── sinkhorn.py         # Entropic OT solver
 │   │   ├── network_simplex.py  # Exact OT solver via LEMON or OR-tools
 │   │   └── evaluation.py       # 1-NN classifier, accuracy, timing, Optuna tuning
-│   │
+│   │   └── utils.py            # Logging, config parsing
 │   ├── benchmarks/         # Baseline OT/DTW methods
-│   │   ├── dtw.py
-│   │   ├── otw.py
-│   │   ├── pow.py
-│   │   ├── opw.py
-│   │   └── taot.py
-│   │
-│   └── utils.py             # Logging, config parsing, plotting helpers
+│       ├── dtw.py
+│       ├── otw.py
+│       ├── pow.py
+│       ├── opw.py
+│       └── taot.py
+│       └── utils.py
 │
 ├── experiments/
 │   ├── configs/             # Experiment configs (YAML)
 │   │   ├── base.yaml        # Dataset paths, hardware specs
-│   │
-│   ├── logs/                # Stdout/stderr from runs, Optuna logs
-│   └── results/             # CSVs of (w,λ)→accuracy, timing, plots
-│
-├── notebooks/
-│   ├── 01_explore_datasets.ipynb
-│   ├── 02_parameter_tuning.ipynb
-│   └── 03_results_analysis.ipynb
 │
 ├── tests/                   # Unit tests
 │   ├── test_sinkhorn.py
 │   └── test_network_simplex.py
-│
-├── requirements.txt         # Python dependencies (NumPy, SciPy, pandas, matplotlib, POT, python-lemon-binding, etc.)
+├── logs/                    # contain experiments log and results
+├── requirements.txt         # Python dependencies
 ├── setup.py                 # Installable package setup
 ├── scripts/                 # Shell scripts for running experiments and setup
 │   ├── run_all_tuning.sh    # Run tuning for all datasets
@@ -97,14 +88,9 @@ python src/tmw/evaluation.py \
   --log_dir logs
 ```
 
-### 3. Jupyter Notebooks
-
-Explore and analyze results using the notebooks in the `notebooks/` folder.
-
 ## Configuration
 
 - Edit YAML files in `experiments/configs/` to control dataset paths, hardware, and parameter search ranges.
-- Example: `experiments/configs/base.yaml` for global paths and hardware, `tuning_lambda.yaml` for lambda search space.
 
 ## Testing
 
